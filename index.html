@@ -10,7 +10,9 @@
 body{margin:0;background:#101827;color:white;font-family:Arial;text-align:center}
 header{padding:25px 10px;background:#172554}
 h1{color:#38bdf8;margin:5px}
-.points{background:#334155;padding:12px;margin:12px;border-radius:12px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:10px;max-width:500px;margin:auto}
+.stat{background:#334155;padding:13px;border-radius:12px}
+.stat b{color:#38bdf8;font-size:20px}
 nav{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:10px}
 button{border:0;border-radius:10px;padding:12px;background:#2563eb;color:white;font-size:15px;cursor:pointer}
 button:disabled{opacity:.5}
@@ -19,9 +21,10 @@ main{padding:10px}
 .gamebtn{background:#0f766e;margin:5px;min-width:90px}
 .hidden{display:none}
 input{padding:12px;border-radius:8px;border:0;width:100px;font-size:18px}
-#tiles,#memory{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:320px;margin:15px auto}
-.tile{height:65px;font-size:22px;background:#475569}
-.card{height:65px;font-size:25px;background:#475569}
+#tiles,#memoryBoard{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:320px;margin:15px auto}
+.tile,.card{height:65px;font-size:22px;background:#475569}
+.bonus{background:#92400e;width:90%;max-width:300px}
+.achievement{background:#334155;padding:12px;margin:8px;border-radius:10px}
 footer{padding:20px;color:#94a3b8}
 </style>
 </head>
@@ -32,15 +35,26 @@ footer{padding:20px;color:#94a3b8}
 <p>Play Games & Have Fun!</p>
 </header>
 
-<div class="points">
-⭐ Total Points: <b id="points">0</b>
+<div class="stats">
+<div class="stat">⭐ Points<br><b id="points">0</b></div>
+<div class="stat">💎 Coins<br><b id="coins">0</b></div>
+<div class="stat">🏆 High Score<br><b id="highScore">0</b></div>
+<div class="stat">🔥 Streak<br><b id="streak">0</b> Days</div>
 </div>
+
+<section class="panel">
+<h2>🎁 Daily Bonus</h2>
+<p>දිනපතා Bonus Points 20ක් ලබාගන්න!</p>
+<button class="bonus" id="bonusBtn" onclick="claimBonus()">🎁 Claim Bonus</button>
+<p id="bonusMsg"></p>
+</section>
 
 <nav>
 <button onclick="show('quiz')">🧠 Quiz</button>
 <button onclick="show('puzzle')">🧩 Puzzle</button>
 <button onclick="show('guess')">🔢 Guess</button>
 <button onclick="show('memory')">🃏 Memory</button>
+<button onclick="show('achievements')">🎖️ Awards</button>
 </nav>
 
 <main>
@@ -73,33 +87,129 @@ footer{padding:20px;color:#94a3b8}
 <section id="memory" class="panel hidden">
 <h2>🃏 Memory Game</h2>
 <p>එක සමාන කාඩ්පත් සොයන්න.</p>
-<div id="memory"></div>
+<div id="memoryBoard"></div>
 <p id="memorymsg"></p>
 <button onclick="newMemory()">New Game</button>
 </section>
 
+<section id="achievements" class="panel hidden">
+<h2>🎖️ Achievements</h2>
+<div id="awardList"></div>
+</section>
+
 </main>
 
-<footer>© 2026 Kavidu Gimhan Games</footer>
+<footer>© 2026 Kavidu Gimhan Games ❤️</footer>
 
 <script>
 let points=Number(localStorage.getItem("kg_points"))||0;
+let coins=Number(localStorage.getItem("kg_coins"))||0;
+let highScore=Number(localStorage.getItem("kg_high"))||0;
+let achievements=JSON.parse(localStorage.getItem("kg_awards")||"[]");
+
+function today(){
+ let d=new Date();
+ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+}
+
+function yesterday(){
+ let d=new Date();
+ d.setDate(d.getDate()-1);
+ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+}
+
+// Daily streak
+let lastVisit=localStorage.getItem("kg_lastVisit");
+let streak=Number(localStorage.getItem("kg_streak"))||0;
+
+if(lastVisit!==today()){
+ streak=lastVisit===yesterday()?streak+1:1;
+ localStorage.setItem("kg_lastVisit",today());
+ localStorage.setItem("kg_streak",streak);
+}
 
 function updatePoints(){
+ if(points>highScore){
+  highScore=points;
+ }
  document.getElementById("points").textContent=points;
+ document.getElementById("coins").textContent=coins;
+ document.getElementById("highScore").textContent=highScore;
+ document.getElementById("streak").textContent=streak;
+
  localStorage.setItem("kg_points",points);
+ localStorage.setItem("kg_coins",coins);
+ localStorage.setItem("kg_high",highScore);
+
+ updateAwards();
 }
 
 function earn(n){
  points+=n;
+ coins+=Math.max(1,Math.floor(n/5));
  updatePoints();
 }
 
+function unlock(name){
+ if(!achievements.includes(name)){
+  achievements.push(name);
+  localStorage.setItem("kg_awards",JSON.stringify(achievements));
+ }
+}
+
+const awards=[
+ ["50 Points","ලකුණු 50ක් ලබාගන්න",()=>points>=50],
+ ["100 Points","ලකුණු 100ක් ලබාගන්න",()=>points>=100],
+ ["200 Points","ලකුණු 200ක් ලබාගන්න",()=>points>=200],
+ ["Quiz Master","Quiz ප්‍රශ්නයක් නිවැරදිව කරන්න",()=>achievements.includes("Quiz Master")],
+ ["Puzzle Winner","Puzzle එක සම්පූර්ණ කරන්න",()=>achievements.includes("Puzzle Winner")],
+ ["Guess Winner","රහස් අංකය සොයාගන්න",()=>achievements.includes("Guess Winner")],
+ ["Memory Master","Memory Game එක සම්පූර්ණ කරන්න",()=>achievements.includes("Memory Master")]
+];
+
+function updateAwards(){
+ awards.forEach(a=>{
+  if(a[2]())unlock(a[0]);
+ });
+ let list=document.getElementById("awardList");
+ if(!list)return;
+ list.innerHTML="";
+ awards.forEach(a=>{
+  let done=achievements.includes(a[0]);
+  let div=document.createElement("div");
+  div.className="achievement";
+  div.textContent=(done?"🏆 ":"🔒 ")+a[0]+" - "+a[1];
+  list.appendChild(div);
+ });
+}
+
+// Daily Bonus
+function checkBonus(){
+ let claimed=localStorage.getItem("kg_bonusDate")===today();
+ let btn=document.getElementById("bonusBtn");
+ btn.disabled=claimed;
+ btn.textContent=claimed?"✅ Bonus Claimed":"🎁 Claim Bonus";
+ document.getElementById("bonusMsg").textContent=
+ claimed?"අද Bonus එක ලබාගෙන ඇත. හෙට නැවත එන්න!":"අද Bonus එක තවම ලබාගෙන නැහැ!";
+}
+
+function claimBonus(){
+ if(localStorage.getItem("kg_bonusDate")===today())return;
+ localStorage.setItem("kg_bonusDate",today());
+ points+=20;
+ coins+=4;
+ updatePoints();
+ checkBonus();
+}
+
+// Navigation
 function show(id){
  document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
  document.getElementById(id).classList.remove("hidden");
+ if(id==="achievements")updateAwards();
 }
 
+// Quiz
 const questions=[
 ["ශ්‍රී ලංකාවේ අගනුවර කුමක්ද?",["කොළඹ","ශ්‍රී ජයවර්ධනපුර","මහනුවර"],1],
 ["සතියකට දින කීයක් තිබේද?",["5","6","7"],2],
@@ -130,11 +240,17 @@ function quizAnswer(i){
  if(quizDone)return;
  quizDone=true;
  let correct=i===questions[qi][2];
- document.getElementById("quizmsg").textContent=correct?"🎉 නිවැරදියි! +10 Points":"❌ වැරදියි! නැවත උත්සාහ කරන්න.";
- if(correct)earn(10);
+ document.getElementById("quizmsg").textContent=
+ correct?"🎉 නිවැරදියි! +10 Points":"❌ වැරදියි!";
+
+ if(correct){
+  earn(10);
+  unlock("Quiz Master");
+ }
 }
 
-let puzzle=[],moves=0;
+// Puzzle
+let puzzle=[],moves=0,puzzleDone=false;
 
 function newPuzzle(){
  puzzle=[...Array(15)].map((_,i)=>i+1).concat(0);
@@ -143,11 +259,14 @@ function newPuzzle(){
   let choices=[z-4,z+4];
   if(z%4)choices.push(z-1);
   if(z%4!==3)choices.push(z+1);
-  let valid=choices.filter(x=>x>=0&&x<16&&Math.abs((x%4)-(z%4))+Math.abs(Math.floor(x/4)-Math.floor(z/4))===1);
+  let valid=choices.filter(x=>x>=0&&x<16&&
+  Math.abs((x%4)-(z%4))+
+  Math.abs(Math.floor(x/4)-Math.floor(z/4))===1);
   let t=valid[Math.floor(Math.random()*valid.length)];
   [puzzle[z],puzzle[t]]=[puzzle[t],puzzle[z]];
  }
  moves=0;
+ puzzleDone=false;
  document.getElementById("puzzmsg").textContent="Moves: 0";
  drawPuzzle();
 }
@@ -166,25 +285,29 @@ function drawPuzzle(){
 }
 
 function moveTile(i){
+ if(puzzleDone)return;
  let z=puzzle.indexOf(0);
- if(Math.abs((i%4)-(z%4))+Math.abs(Math.floor(i/4)-Math.floor(z/4))!==1)return;
+ if(Math.abs((i%4)-(z%4))+
+ Math.abs(Math.floor(i/4)-Math.floor(z/4))!==1)return;
  [puzzle[i],puzzle[z]]=[puzzle[z],puzzle[i]];
  moves++;
  drawPuzzle();
  if(puzzle.every((n,i)=>n===(i+1)%16)){
+  puzzleDone=true;
   document.getElementById("puzzmsg").textContent="🏆 Puzzle Complete! +20 Points";
   earn(20);
+  unlock("Puzzle Winner");
   document.querySelectorAll("#tiles button").forEach(b=>b.disabled=true);
  }else{
   document.getElementById("puzzmsg").textContent="Moves: "+moves;
  }
 }
 
-let secret=0,tries=0,guessDone=false;
+// Guess
+let secret=0,guessDone=false;
 
 function newGuess(){
  secret=Math.floor(Math.random()*20)+1;
- tries=0;
  guessDone=false;
  document.getElementById("guessinput").value="";
  document.getElementById("guessmsg").textContent="අංකයක් තෝරන්න!";
@@ -197,11 +320,11 @@ function checkGuess(){
   document.getElementById("guessmsg").textContent="1 සිට 20 දක්වා අංකයක් ඇතුළත් කරන්න.";
   return;
  }
- tries++;
  if(n===secret){
   guessDone=true;
   document.getElementById("guessmsg").textContent="🎉 හරි! +15 Points";
   earn(15);
+  unlock("Guess Winner");
  }else if(n<secret){
   document.getElementById("guessmsg").textContent="තව ටිකක් වැඩි අංකයක් උත්සාහ කරන්න.";
  }else{
@@ -209,25 +332,30 @@ function checkGuess(){
  }
 }
 
+// Memory
 let symbols=["🐱","🐶","🐸","🦊","🐼","🐵","🦁","🐰"];
 let cards=[],first=null,locked=false,matched=0;
 
 function newMemory(){
- cards=[...symbols,...symbols].sort(()=>Math.random()-.5);
- first=null;locked=false;matched=0;
+ cards=[...symbols,...symbols]
+ .sort(()=>Math.random()-.5)
+ .map(symbol=>({symbol,open:false,done:false}));
+ first=null;
+ locked=false;
+ matched=0;
  document.getElementById("memorymsg").textContent="සමාන කාඩ්පත් සොයන්න!";
  drawMemory();
 }
 
 function drawMemory(){
- let area=document.getElementById("memory");
+ let area=document.getElementById("memoryBoard");
  area.innerHTML="";
  cards.forEach((c,i)=>{
   let b=document.createElement("button");
   b.className="card";
-  b.textContent=c.open||c.done?c:"❓";
+  b.textContent=c.open||c.done?c.symbol:"❓";
   b.onclick=()=>flip(i);
-  b.disabled=!!c.done||locked||!!c.open;
+  b.disabled=c.done||locked||c.open;
   area.appendChild(b);
  });
 }
@@ -236,15 +364,24 @@ function flip(i){
  if(locked||cards[i].done||cards[i].open)return;
  cards[i].open=true;
  drawMemory();
- if(first===null){first=i;return;}
- if(cards[first]===cards[i]){
+
+ if(first===null){
+  first=i;
+  return;
+ }
+
+ if(cards[first].symbol===cards[i].symbol){
   cards[first].done=true;
   cards[i].done=true;
   matched+=2;
   first=null;
   earn(5);
   document.getElementById("memorymsg").textContent="👏 Match! +5 Points";
-  if(matched===16)document.getElementById("memorymsg").textContent="🏆 සියල්ල සොයාගත්තා!";
+
+  if(matched===16){
+   document.getElementById("memorymsg").textContent="🏆 සියල්ල සොයාගත්තා!";
+   unlock("Memory Master");
+  }
   drawMemory();
  }else{
   locked=true;
@@ -259,7 +396,9 @@ function flip(i){
  }
 }
 
+// Start
 updatePoints();
+checkBonus();
 newQuiz();
 newPuzzle();
 newGuess();
