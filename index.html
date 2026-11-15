@@ -1,133 +1,270 @@
 
+
 <!DOCTYPE html>
 <html lang="si">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kavidu Gimhan Games</title>
-
 <style>
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #101827;
-  color: white;
-  text-align: center;
-}
-
-header {
-  background: #172554;
-  padding: 25px;
-}
-
-header h1 {
-  margin: 0;
-  color: #38bdf8;
-}
-
-.container {
-  padding: 25px 15px;
-}
-
-.game {
-  background: #1e293b;
-  padding: 25px;
-  border-radius: 15px;
-  max-width: 420px;
-  margin: auto;
-}
-
-button {
-  background: #16a34a;
-  color: white;
-  border: none;
-  padding: 14px;
-  margin: 8px;
-  border-radius: 9px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #15803d;
-}
-
-#result {
-  margin-top: 20px;
-  font-size: 20px;
-}
-
-footer {
-  padding: 20px;
-  color: #94a3b8;
-}
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial;text-align:center}
+header{padding:25px 10px;background:#172554}
+h1{color:#38bdf8;margin:5px}
+.points{background:#334155;padding:12px;margin:12px;border-radius:12px}
+nav{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:10px}
+button{border:0;border-radius:10px;padding:12px;background:#2563eb;color:white;font-size:15px;cursor:pointer}
+button:disabled{opacity:.5}
+main{padding:10px}
+.panel{background:#1e293b;border-radius:16px;padding:20px;margin:12px auto;max-width:450px}
+.gamebtn{background:#0f766e;margin:5px;min-width:90px}
+.hidden{display:none}
+input{padding:12px;border-radius:8px;border:0;width:100px;font-size:18px}
+#tiles,#memory{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:320px;margin:15px auto}
+.tile{height:65px;font-size:22px;background:#475569}
+.card{height:65px;font-size:25px;background:#475569}
+footer{padding:20px;color:#94a3b8}
 </style>
 </head>
-
 <body>
 
 <header>
-  <h1>🎮 Kavidu Gimhan</h1>
-  <p>Play Games & Enjoy!</p>
+<h1>🎮 Kavidu Gimhan</h1>
+<p>Play Games & Have Fun!</p>
 </header>
 
-<div class="container">
-
-  <div class="game">
-    <h2>🧠 Quiz Game</h2>
-
-    <h3 id="question">
-      ශ්‍රී ලංකාවේ අගනුවර කුමක්ද?
-    </h3>
-
-    <div id="answers">
-      <button onclick="answer(false)">කොළඹ</button>
-      <button onclick="answer(true)">ශ්‍රී ජයවර්ධනපුර</button>
-      <button onclick="answer(false)">මහනුවර</button>
-    </div>
-
-    <h3 id="result">⭐ ලකුණු: 0</h3>
-
-    <button onclick="restart()">නැවත පටන් ගන්න</button>
-  </div>
-
+<div class="points">
+⭐ Total Points: <b id="points">0</b>
 </div>
 
-<footer>
-  © 2026 Kavidu Gimhan Games
-</footer>
+<nav>
+<button onclick="show('quiz')">🧠 Quiz</button>
+<button onclick="show('puzzle')">🧩 Puzzle</button>
+<button onclick="show('guess')">🔢 Guess</button>
+<button onclick="show('memory')">🃏 Memory</button>
+</nav>
+
+<main>
+
+<section id="quiz" class="panel">
+<h2>🧠 Quiz Game</h2>
+<h3 id="question"></h3>
+<div id="answers"></div>
+<p id="quizmsg"></p>
+<button onclick="newQuiz()">Next Question</button>
+</section>
+
+<section id="puzzle" class="panel hidden">
+<h2>🧩 Number Puzzle</h2>
+<p>අංක 1 සිට 15 දක්වා පිළිවෙළට සකස් කරන්න.</p>
+<div id="tiles"></div>
+<p id="puzzmsg"></p>
+<button onclick="newPuzzle()">New Puzzle</button>
+</section>
+
+<section id="guess" class="panel hidden">
+<h2>🔢 Number Guess</h2>
+<p>1 සිට 20 අතර රහස් අංකය සොයන්න.</p>
+<input id="guessinput" type="number" min="1" max="20">
+<button onclick="checkGuess()">Guess</button>
+<p id="guessmsg"></p>
+<button onclick="newGuess()">New Number</button>
+</section>
+
+<section id="memory" class="panel hidden">
+<h2>🃏 Memory Game</h2>
+<p>එක සමාන කාඩ්පත් සොයන්න.</p>
+<div id="memory"></div>
+<p id="memorymsg"></p>
+<button onclick="newMemory()">New Game</button>
+</section>
+
+</main>
+
+<footer>© 2026 Kavidu Gimhan Games</footer>
 
 <script>
-let points = 0;
-let answered = false;
+let points=Number(localStorage.getItem("kg_points"))||0;
 
-function answer(correct) {
-  if (answered) return;
-
-  answered = true;
-
-  if (correct) {
-    points += 10;
-    document.getElementById("result").innerText =
-      "🎉 නිවැරදියි! ⭐ ලකුණු: " + points;
-  } else {
-    document.getElementById("result").innerText =
-      "❌ වැරදියි! ⭐ ලකුණු: " + points;
-  }
+function updatePoints(){
+ document.getElementById("points").textContent=points;
+ localStorage.setItem("kg_points",points);
 }
 
-function restart() {
-  points = 0;
-  answered = false;
-
-  document.getElementById("result").innerText =
-    "⭐ ලකුණු: 0";
+function earn(n){
+ points+=n;
+ updatePoints();
 }
+
+function show(id){
+ document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+const questions=[
+["ශ්‍රී ලංකාවේ අගනුවර කුමක්ද?",["කොළඹ","ශ්‍රී ජයවර්ධනපුර","මහනුවර"],1],
+["සතියකට දින කීයක් තිබේද?",["5","6","7"],2],
+["2 + 5 = ?",["6","7","8"],1],
+["හිරු උදාවන්නේ කුමන දිශාවෙන්ද?",["නැගෙනහිර","බටහිර","උතුර"],0],
+["ශ්‍රී ලංකාවේ ජාතික සත්වයා කුමක්ද?",["සිංහයා","දඬුලේනා","අලියා"],1]
+];
+
+let qi=0,quizDone=false;
+
+function newQuiz(){
+ qi=Math.floor(Math.random()*questions.length);
+ quizDone=false;
+ let q=questions[qi];
+ document.getElementById("question").textContent=q[0];
+ document.getElementById("quizmsg").textContent="";
+ document.getElementById("answers").innerHTML="";
+ q[1].forEach((a,i)=>{
+  let b=document.createElement("button");
+  b.className="gamebtn";
+  b.textContent=a;
+  b.onclick=()=>quizAnswer(i);
+  document.getElementById("answers").appendChild(b);
+ });
+}
+
+function quizAnswer(i){
+ if(quizDone)return;
+ quizDone=true;
+ let correct=i===questions[qi][2];
+ document.getElementById("quizmsg").textContent=correct?"🎉 නිවැරදියි! +10 Points":"❌ වැරදියි! නැවත උත්සාහ කරන්න.";
+ if(correct)earn(10);
+}
+
+let puzzle=[],moves=0;
+
+function newPuzzle(){
+ puzzle=[...Array(15)].map((_,i)=>i+1).concat(0);
+ for(let i=0;i<120;i++){
+  let z=puzzle.indexOf(0);
+  let choices=[z-4,z+4];
+  if(z%4)choices.push(z-1);
+  if(z%4!==3)choices.push(z+1);
+  let valid=choices.filter(x=>x>=0&&x<16&&Math.abs((x%4)-(z%4))+Math.abs(Math.floor(x/4)-Math.floor(z/4))===1);
+  let t=valid[Math.floor(Math.random()*valid.length)];
+  [puzzle[z],puzzle[t]]=[puzzle[t],puzzle[z]];
+ }
+ moves=0;
+ document.getElementById("puzzmsg").textContent="Moves: 0";
+ drawPuzzle();
+}
+
+function drawPuzzle(){
+ let area=document.getElementById("tiles");
+ area.innerHTML="";
+ puzzle.forEach((n,i)=>{
+  let b=document.createElement("button");
+  b.className="tile";
+  b.textContent=n||"";
+  b.style.visibility=n?"visible":"hidden";
+  b.onclick=()=>moveTile(i);
+  area.appendChild(b);
+ });
+}
+
+function moveTile(i){
+ let z=puzzle.indexOf(0);
+ if(Math.abs((i%4)-(z%4))+Math.abs(Math.floor(i/4)-Math.floor(z/4))!==1)return;
+ [puzzle[i],puzzle[z]]=[puzzle[z],puzzle[i]];
+ moves++;
+ drawPuzzle();
+ if(puzzle.every((n,i)=>n===(i+1)%16)){
+  document.getElementById("puzzmsg").textContent="🏆 Puzzle Complete! +20 Points";
+  earn(20);
+  document.querySelectorAll("#tiles button").forEach(b=>b.disabled=true);
+ }else{
+  document.getElementById("puzzmsg").textContent="Moves: "+moves;
+ }
+}
+
+let secret=0,tries=0,guessDone=false;
+
+function newGuess(){
+ secret=Math.floor(Math.random()*20)+1;
+ tries=0;
+ guessDone=false;
+ document.getElementById("guessinput").value="";
+ document.getElementById("guessmsg").textContent="අංකයක් තෝරන්න!";
+}
+
+function checkGuess(){
+ if(guessDone)return;
+ let n=Number(document.getElementById("guessinput").value);
+ if(!Number.isInteger(n)||n<1||n>20){
+  document.getElementById("guessmsg").textContent="1 සිට 20 දක්වා අංකයක් ඇතුළත් කරන්න.";
+  return;
+ }
+ tries++;
+ if(n===secret){
+  guessDone=true;
+  document.getElementById("guessmsg").textContent="🎉 හරි! +15 Points";
+  earn(15);
+ }else if(n<secret){
+  document.getElementById("guessmsg").textContent="තව ටිකක් වැඩි අංකයක් උත්සාහ කරන්න.";
+ }else{
+  document.getElementById("guessmsg").textContent="තව ටිකක් අඩු අංකයක් උත්සාහ කරන්න.";
+ }
+}
+
+let symbols=["🐱","🐶","🐸","🦊","🐼","🐵","🦁","🐰"];
+let cards=[],first=null,locked=false,matched=0;
+
+function newMemory(){
+ cards=[...symbols,...symbols].sort(()=>Math.random()-.5);
+ first=null;locked=false;matched=0;
+ document.getElementById("memorymsg").textContent="සමාන කාඩ්පත් සොයන්න!";
+ drawMemory();
+}
+
+function drawMemory(){
+ let area=document.getElementById("memory");
+ area.innerHTML="";
+ cards.forEach((c,i)=>{
+  let b=document.createElement("button");
+  b.className="card";
+  b.textContent=c.open||c.done?c:"❓";
+  b.onclick=()=>flip(i);
+  b.disabled=!!c.done||locked||!!c.open;
+  area.appendChild(b);
+ });
+}
+
+function flip(i){
+ if(locked||cards[i].done||cards[i].open)return;
+ cards[i].open=true;
+ drawMemory();
+ if(first===null){first=i;return;}
+ if(cards[first]===cards[i]){
+  cards[first].done=true;
+  cards[i].done=true;
+  matched+=2;
+  first=null;
+  earn(5);
+  document.getElementById("memorymsg").textContent="👏 Match! +5 Points";
+  if(matched===16)document.getElementById("memorymsg").textContent="🏆 සියල්ල සොයාගත්තා!";
+  drawMemory();
+ }else{
+  locked=true;
+  let a=first;
+  first=null;
+  setTimeout(()=>{
+   cards[a].open=false;
+   cards[i].open=false;
+   locked=false;
+   drawMemory();
+  },900);
+ }
+}
+
+updatePoints();
+newQuiz();
+newPuzzle();
+newGuess();
+newMemory();
 </script>
-
 </body>
 </html>
