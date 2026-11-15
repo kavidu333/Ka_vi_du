@@ -1,0 +1,133 @@
+
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kavidu Gimhan Games</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: white;
+  text-align: center;
+}
+
+header {
+  background: #172554;
+  padding: 25px;
+}
+
+header h1 {
+  margin: 0;
+  color: #38bdf8;
+}
+
+.container {
+  padding: 25px 15px;
+}
+
+.game {
+  background: #1e293b;
+  padding: 25px;
+  border-radius: 15px;
+  max-width: 420px;
+  margin: auto;
+}
+
+button {
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 14px;
+  margin: 8px;
+  border-radius: 9px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #15803d;
+}
+
+#result {
+  margin-top: 20px;
+  font-size: 20px;
+}
+
+footer {
+  padding: 20px;
+  color: #94a3b8;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🎮 Kavidu Gimhan</h1>
+  <p>Play Games & Enjoy!</p>
+</header>
+
+<div class="container">
+
+  <div class="game">
+    <h2>🧠 Quiz Game</h2>
+
+    <h3 id="question">
+      ශ්‍රී ලංකාවේ අගනුවර කුමක්ද?
+    </h3>
+
+    <div id="answers">
+      <button onclick="answer(false)">කොළඹ</button>
+      <button onclick="answer(true)">ශ්‍රී ජයවර්ධනපුර</button>
+      <button onclick="answer(false)">මහනුවර</button>
+    </div>
+
+    <h3 id="result">⭐ ලකුණු: 0</h3>
+
+    <button onclick="restart()">නැවත පටන් ගන්න</button>
+  </div>
+
+</div>
+
+<footer>
+  © 2026 Kavidu Gimhan Games
+</footer>
+
+<script>
+let points = 0;
+let answered = false;
+
+function answer(correct) {
+  if (answered) return;
+
+  answered = true;
+
+  if (correct) {
+    points += 10;
+    document.getElementById("result").innerText =
+      "🎉 නිවැරදියි! ⭐ ලකුණු: " + points;
+  } else {
+    document.getElementById("result").innerText =
+      "❌ වැරදියි! ⭐ ලකුණු: " + points;
+  }
+}
+
+function restart() {
+  points = 0;
+  answered = false;
+
+  document.getElementById("result").innerText =
+    "⭐ ලකුණු: 0";
+}
+</script>
+
+</body>
+</html>
