@@ -54,6 +54,20 @@ input{
 }
 #connection{font-size:13px;color:#fbbf24}
 footer{padding:20px;color:#94a3b8}
+#wheelWrap{
+ width:280px;height:280px;max-width:80vw;max-height:80vw;
+ margin:20px auto;position:relative
+}
+#wheelCanvas{
+ width:100%;height:100%;border-radius:50%;
+ transition:transform 5s cubic-bezier(.15,.75,.15,1);
+}
+#wheelPointer{
+ position:absolute;top:-12px;left:50%;
+ transform:translateX(-50%);
+ color:#facc15;font-size:35px;z-index:2
+}
+#spinBtn{background:#b45309;font-size:18px;padding:14px 30px}
 .gold{color:#fbbf24}
 </style>
 </head>
@@ -87,6 +101,7 @@ footer{padding:20px;color:#94a3b8}
 <button onclick="show('puzzle')">🧩 Puzzle</button>
 <button onclick="show('guess')">🔢 Guess</button>
 <button onclick="show('memory')">🃏 Memory</button>
+<button onclick="show('spin')">🎡 Spin Wheel</button>
 <button onclick="show('achievements')">🎖️ Awards</button>
 <button onclick="show('leaderboard')">🏆 Leaderboard</button>
 </nav>
@@ -126,25 +141,30 @@ footer{padding:20px;color:#94a3b8}
 <button onclick="newMemory()">New Game</button>
 </section>
 
+<section id="spin" class="panel hidden">
+<h2>🎡 Spin Wheel</h2>
+<p>Spin කරලා Points සහ Coins ලබාගන්න!</p>
+<div id="wheelWrap">
+ <div id="wheelPointer">▼</div>
+ <canvas id="wheelCanvas" width="500" height="500"></canvas>
+</div>
+<button id="spinBtn" onclick="spinWheel()">🎡 SPIN NOW</button>
+<p id="spinMsg">වාසනාව උරගා බලන්න!</p>
+</section>
+
 <section id="achievements" class="panel hidden">
 <h2>🎖️ Achievements</h2>
 <div id="awardList"></div>
 </section>
 
-<!-- PLAYER PROFILE -->
 <section id="leaderboard" class="panel hidden">
 <h2>👤 Player Profile</h2>
 <p>ඔයා කැමති Nickname එකක් ඇතුළත් කරන්න.</p>
-
-<input id="playerNameInput"
-type="text" maxlength="16"
+<input id="playerNameInput" type="text" maxlength="16"
 placeholder="Enter Nickname">
-
 <button onclick="savePlayerName()">💾 Save Name</button>
 <p id="nameMsg"></p>
-
 <hr>
-
 <h2>🏆 Top 20 Players</h2>
 <p>වැඩිම Points ලබාගත් Players</p>
 <div id="leaderboardList">Loading...</div>
@@ -174,12 +194,12 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
-const db = firebase.database();
+const auth=firebase.auth();
+const db=firebase.database();
 
-let playerRef = null;
-let cloudReady = false;
-let playerName = localStorage.getItem("kg_playerName") || "";
+let playerRef=null;
+let cloudReady=false;
+let playerName=localStorage.getItem("kg_playerName")||"";
 
 function readLocal(key,fallback){
  try{
@@ -269,7 +289,6 @@ async function initCloud(){
    streak=Number(data.streak)||0;
    lastVisit=data.lastVisit||"";
    bonusDate=data.bonusDate||"";
-
    playerName=data.playerName||playerName;
   }
 
@@ -282,7 +301,6 @@ async function initCloud(){
 
   updatePoints();
   checkBonus();
-  updateAwards();
 
   document.getElementById("connection").textContent=
    "🟢 Firebase Connected";
@@ -293,10 +311,8 @@ async function initCloud(){
 
  }catch(error){
   console.error(error);
-
   document.getElementById("connection").textContent=
    "🔴 Firebase Error: "+error.message;
-
   document.getElementById("bonusMsg").textContent=
    "Database සම්බන්ධතාව පරීක්ෂා කරන්න.";
  }
@@ -318,10 +334,8 @@ function updatePoints(){
 
 function earn(n){
  if(!cloudReady)return;
-
  points+=n;
  coins+=Math.max(1,Math.floor(n/5));
-
  updatePoints();
 }
 
@@ -391,7 +405,6 @@ async function claimBonus(){
     Number(data.highScore)||0,data.points
    );
    data.bonusDate=today();
-
    return data;
   });
 
@@ -406,7 +419,6 @@ async function claimBonus(){
 
   updatePoints();
   checkBonus();
-  saveCloud();
 
  }catch(error){
   document.getElementById("bonusMsg").textContent=
@@ -420,11 +432,11 @@ function show(id){
  document.querySelectorAll("main section").forEach(s=>
   s.classList.add("hidden")
  );
-
  document.getElementById(id).classList.remove("hidden");
 
  if(id==="achievements")updateAwards();
  if(id==="leaderboard")loadPlayerName();
+ if(id==="spin")drawWheel();
 }
 
 // PLAYER NAME
@@ -474,7 +486,6 @@ function startLeaderboard(){
 
   snapshot.forEach(child=>{
    const data=child.val()||{};
-
    players.push({
     name:data.playerName||"Player",
     points:Number(data.points)||0
@@ -491,12 +502,9 @@ function startLeaderboard(){
   players.forEach((p,index)=>{
    const item=document.createElement("div");
    item.className="achievement";
-
    const medal=["🥇","🥈","🥉"][index]||"🏅";
-
    item.textContent=
     medal+" "+p.name+" — ⭐ "+p.points+" Points";
-
    list.appendChild(item);
   });
 
@@ -524,7 +532,6 @@ function newQuiz(){
  quizDone=false;
 
  const q=questions[qi];
-
  document.getElementById("question").textContent=q[0];
  document.getElementById("quizmsg").textContent="";
  document.getElementById("answers").innerHTML="";
@@ -617,7 +624,6 @@ function moveTile(i){
   puzzleDone=true;
   document.getElementById("puzzmsg").textContent=
    "🏆 Puzzle Complete! +20 Points";
-
   earn(20);
   unlock("Puzzle Winner");
   document.querySelectorAll("#tiles button").forEach(b=>
@@ -636,7 +642,6 @@ let guessDone=false;
 function newGuess(){
  secret=Math.floor(Math.random()*20)+1;
  guessDone=false;
-
  document.getElementById("guessinput").value="";
  document.getElementById("guessmsg").textContent="අංකයක් තෝරන්න!";
 }
@@ -699,10 +704,8 @@ function drawMemory(){
   const b=document.createElement("button");
   b.className="card";
   b.textContent=c.open||c.done?c.symbol:"❓";
-
   b.onclick=()=>flip(i);
   b.disabled=c.done||locked||c.open||!cloudReady;
-
   area.appendChild(b);
  });
 }
@@ -721,7 +724,6 @@ function flip(i){
  if(cards[first].symbol===cards[i].symbol){
   cards[first].done=true;
   cards[i].done=true;
-
   matched+=2;
   first=null;
 
@@ -752,12 +754,128 @@ function flip(i){
  }
 }
 
-// START GAME
+// SPIN WHEEL GAME
+
+const wheelRewards=[
+ {type:"points",value:5,label:"5 P"},
+ {type:"points",value:10,label:"10 P"},
+ {type:"coins",value:5,label:"5 C"},
+ {type:"points",value:15,label:"15 P"},
+ {type:"coins",value:10,label:"10 C"},
+ {type:"points",value:20,label:"20 P"},
+ {type:"points",value:5,label:"5 P"},
+ {type:"coins",value:15,label:"15 C"},
+ {type:"points",value:25,label:"25 P"},
+ {type:"coins",value:5,label:"5 C"},
+ {type:"points",value:10,label:"10 P"},
+ {type:"points",value:30,label:"30 P"}
+];
+
+const wheelColors=[
+ "#2563eb","#0f766e","#7c3aed","#b45309",
+ "#be123c","#0369a1","#15803d","#9333ea",
+ "#c2410c","#0e7490","#4f46e5","#a21caf"
+];
+
+let wheelRotation=0;
+let wheelBusy=false;
+
+function drawWheel(){
+ const canvas=document.getElementById("wheelCanvas");
+ if(!canvas)return;
+
+ const ctx=canvas.getContext("2d");
+ const center=250;
+ const radius=245;
+ const slice=(Math.PI*2)/wheelRewards.length;
+
+ ctx.clearRect(0,0,500,500);
+
+ wheelRewards.forEach((reward,i)=>{
+  const start=-Math.PI/2+i*slice;
+  const end=start+slice;
+
+  ctx.beginPath();
+  ctx.moveTo(center,center);
+  ctx.arc(center,center,radius,start,end);
+  ctx.closePath();
+  ctx.fillStyle=wheelColors[i];
+  ctx.fill();
+  ctx.strokeStyle="#ffffff";
+  ctx.lineWidth=3;
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(center,center);
+  ctx.rotate(start+slice/2);
+  ctx.textAlign="right";
+  ctx.fillStyle="#ffffff";
+  ctx.font="bold 25px Arial";
+  ctx.fillText(reward.label,210,8);
+  ctx.restore();
+ });
+
+ ctx.beginPath();
+ ctx.arc(center,center,35,0,Math.PI*2);
+ ctx.fillStyle="#facc15";
+ ctx.fill();
+ ctx.strokeStyle="#ffffff";
+ ctx.lineWidth=4;
+ ctx.stroke();
+
+ ctx.fillStyle="#172554";
+ ctx.font="bold 18px Arial";
+ ctx.textAlign="center";
+ ctx.fillText("SPIN",center,center+6);
+}
+
+function spinWheel(){
+ if(!cloudReady||wheelBusy)return;
+
+ wheelBusy=true;
+
+ const btn=document.getElementById("spinBtn");
+ const wheel=document.getElementById("wheelCanvas");
+ const msg=document.getElementById("spinMsg");
+
+ btn.disabled=true;
+ msg.textContent="🎡 Wheel එක කැරකෙමින් පවතී...";
+
+ const index=Math.floor(Math.random()*wheelRewards.length);
+ const reward=wheelRewards[index];
+
+ const slice=360/wheelRewards.length;
+ const desired=(360-(index+0.5)*slice+360)%360;
+ const current=wheelRotation%360;
+ const extra=(desired-current+360)%360;
+
+ wheelRotation+=360*6+extra;
+ wheel.style.transform="rotate("+wheelRotation+"deg)";
+
+ setTimeout(()=>{
+  if(reward.type==="points"){
+   points+=reward.value;
+   coins+=Math.max(1,Math.floor(reward.value/5));
+   updatePoints();
+   msg.textContent="🎉 ඔයාට "+reward.value+" Points ලැබුණා!";
+  }else{
+   coins+=reward.value;
+   updatePoints();
+   msg.textContent="💎 ඔයාට "+reward.value+" Coins ලැබුණා!";
+  }
+
+  wheelBusy=false;
+  btn.disabled=false;
+ },5100);
+}
+
+// START GAMES
 
 newQuiz();
 newPuzzle();
 newGuess();
 newMemory();
+drawWheel();
 
 updatePoints();
 checkBonus();
