@@ -39,8 +39,9 @@ main{padding:10px}
 .hidden{display:none}
 input{
  padding:12px;border-radius:8px;border:0;
- width:100px;font-size:18px
+ width:100%;font-size:16px;margin:7px 0
 }
+#guessinput{width:100px}
 #tiles,#memoryBoard{
  display:grid;grid-template-columns:repeat(4,1fr);
  gap:7px;max-width:320px;margin:15px auto
@@ -53,6 +54,7 @@ input{
 }
 #connection{font-size:13px;color:#fbbf24}
 footer{padding:20px;color:#94a3b8}
+.gold{color:#fbbf24}
 </style>
 </head>
 
@@ -86,6 +88,7 @@ footer{padding:20px;color:#94a3b8}
 <button onclick="show('guess')">🔢 Guess</button>
 <button onclick="show('memory')">🃏 Memory</button>
 <button onclick="show('achievements')">🎖️ Awards</button>
+<button onclick="show('leaderboard')">🏆 Leaderboard</button>
 </nav>
 
 <main>
@@ -128,20 +131,36 @@ footer{padding:20px;color:#94a3b8}
 <div id="awardList"></div>
 </section>
 
+<!-- PLAYER PROFILE -->
+<section id="leaderboard" class="panel hidden">
+<h2>👤 Player Profile</h2>
+<p>ඔයා කැමති Nickname එකක් ඇතුළත් කරන්න.</p>
+
+<input id="playerNameInput"
+type="text" maxlength="16"
+placeholder="Enter Nickname">
+
+<button onclick="savePlayerName()">💾 Save Name</button>
+<p id="nameMsg"></p>
+
+<hr>
+
+<h2>🏆 Top 20 Players</h2>
+<p>වැඩිම Points ලබාගත් Players</p>
+<div id="leaderboardList">Loading...</div>
+</section>
+
 </main>
 
 <footer>© 2026 Kavidu Gimhan Games ❤️</footer>
 
-<!-- Firebase Libraries -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
 <script>
 
-// ==================================
 // FIREBASE CONFIGURATION
-// ==================================
 
 const firebaseConfig = {
  apiKey: "AIzaSyDBmOf_4opXRYj5hN1v1xbPp0NN3Br15t0",
@@ -160,43 +179,37 @@ const db = firebase.database();
 
 let playerRef = null;
 let cloudReady = false;
+let playerName = localStorage.getItem("kg_playerName") || "";
 
-// ==================================
-// PLAYER DATA
-// ==================================
-
-function readLocal(key, fallback){
- try {
-  const value = localStorage.getItem(key);
-  return value === null ? fallback : JSON.parse(value);
- } catch(e) {
-  return fallback;
- }
+function readLocal(key,fallback){
+ try{
+  const v=localStorage.getItem(key);
+  return v===null?fallback:JSON.parse(v);
+ }catch(e){return fallback}
 }
 
-let points = Number(localStorage.getItem("kg_points")) || 0;
-let coins = Number(localStorage.getItem("kg_coins")) || 0;
-let highScore = Number(localStorage.getItem("kg_high")) || 0;
-let achievements = readLocal("kg_awards", []);
+// PLAYER DATA
 
-let streak = Number(localStorage.getItem("kg_streak")) || 0;
-let lastVisit = localStorage.getItem("kg_lastVisit") || "";
-let bonusDate = localStorage.getItem("kg_bonusDate") || "";
+let points=Number(localStorage.getItem("kg_points"))||0;
+let coins=Number(localStorage.getItem("kg_coins"))||0;
+let highScore=Number(localStorage.getItem("kg_high"))||0;
+let achievements=readLocal("kg_awards",[]);
+let streak=Number(localStorage.getItem("kg_streak"))||0;
+let lastVisit=localStorage.getItem("kg_lastVisit")||"";
+let bonusDate=localStorage.getItem("kg_bonusDate")||"";
 
 function today(){
- const d = new Date();
+ const d=new Date();
  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
 }
 
 function yesterday(){
- const d = new Date();
+ const d=new Date();
  d.setDate(d.getDate()-1);
  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
 }
 
-// ==================================
 // LOCAL SAVE
-// ==================================
 
 function saveLocal(){
  localStorage.setItem("kg_points",points);
@@ -206,18 +219,18 @@ function saveLocal(){
  localStorage.setItem("kg_streak",streak);
  localStorage.setItem("kg_lastVisit",lastVisit);
  localStorage.setItem("kg_bonusDate",bonusDate);
+ localStorage.setItem("kg_playerName",playerName);
 }
 
-// ==================================
-// FIREBASE SAVE
-// ==================================
+// CLOUD SAVE
 
 function saveCloud(){
  saveLocal();
 
- if(!cloudReady || !playerRef) return;
+ if(!cloudReady||!playerRef)return;
 
  playerRef.update({
+  playerName:playerName,
   points:points,
   coins:coins,
   highScore:highScore,
@@ -226,115 +239,102 @@ function saveCloud(){
   lastVisit:lastVisit,
   bonusDate:bonusDate
  }).catch(error=>{
-  console.error("Firebase Save Error:",error);
-  document.getElementById("connection").textContent =
+  console.error(error);
+  document.getElementById("connection").textContent=
    "⚠️ Save Error: "+error.message;
  });
 }
 
-// ==================================
-// FIREBASE LOGIN AND LOAD
-// ==================================
+// FIREBASE LOGIN
 
 async function initCloud(){
+ try{
+  const result=await auth.signInAnonymously();
+  const uid=result.user.uid;
 
- try {
+  playerRef=db.ref("players/"+uid);
 
-  const result = await auth.signInAnonymously();
-  const uid = result.user.uid;
-
-  playerRef = db.ref("players/"+uid);
-
-  const snapshot = await playerRef.once("value");
+  const snapshot=await playerRef.once("value");
 
   if(snapshot.exists()){
+   const data=snapshot.val();
 
-   const data = snapshot.val();
+   points=Number(data.points)||0;
+   coins=Number(data.coins)||0;
+   highScore=Number(data.highScore)||0;
 
-   points = Number(data.points) || 0;
-   coins = Number(data.coins) || 0;
-   highScore = Number(data.highScore) || 0;
+   achievements=Array.isArray(data.achievements)?
+    data.achievements:[];
 
-   achievements = Array.isArray(data.achievements)
-    ? data.achievements : [];
+   streak=Number(data.streak)||0;
+   lastVisit=data.lastVisit||"";
+   bonusDate=data.bonusDate||"";
 
-   streak = Number(data.streak) || 0;
-   lastVisit = data.lastVisit || "";
-   bonusDate = data.bonusDate || "";
-
+   playerName=data.playerName||playerName;
   }
 
-  if(lastVisit !== today()){
-   streak = lastVisit === yesterday() ? streak+1 : 1;
-   lastVisit = today();
+  if(lastVisit!==today()){
+   streak=lastVisit===yesterday()?streak+1:1;
+   lastVisit=today();
   }
 
-  cloudReady = true;
+  cloudReady=true;
 
   updatePoints();
   checkBonus();
   updateAwards();
-  saveCloud();
 
-  document.getElementById("connection").textContent =
+  document.getElementById("connection").textContent=
    "🟢 Firebase Connected";
 
- } catch(error){
+  loadPlayerName();
+  startLeaderboard();
+  drawMemory();
 
+ }catch(error){
   console.error(error);
 
-  document.getElementById("connection").textContent =
+  document.getElementById("connection").textContent=
    "🔴 Firebase Error: "+error.message;
 
-  document.getElementById("bonusMsg").textContent =
+  document.getElementById("bonusMsg").textContent=
    "Database සම්බන්ධතාව පරීක්ෂා කරන්න.";
-
  }
-
 }
 
-// ==================================
 // POINTS AND COINS
-// ==================================
 
 function updatePoints(){
+ if(points>highScore)highScore=points;
 
- if(points > highScore){
-  highScore = points;
- }
-
- document.getElementById("points").textContent = points;
- document.getElementById("coins").textContent = coins;
- document.getElementById("highScore").textContent = highScore;
- document.getElementById("streak").textContent = streak;
+ document.getElementById("points").textContent=points;
+ document.getElementById("coins").textContent=coins;
+ document.getElementById("highScore").textContent=highScore;
+ document.getElementById("streak").textContent=streak;
 
  saveCloud();
  updateAwards();
 }
 
 function earn(n){
- if(!cloudReady) return;
+ if(!cloudReady)return;
 
- points += n;
- coins += Math.max(1,Math.floor(n/5));
+ points+=n;
+ coins+=Math.max(1,Math.floor(n/5));
 
  updatePoints();
 }
 
 function unlock(name){
-
  if(!achievements.includes(name)){
   achievements.push(name);
   saveCloud();
  }
-
 }
 
-// ==================================
 // ACHIEVEMENTS
-// ==================================
 
-const awards = [
+const awards=[
  ["50 Points","ලකුණු 50ක් ලබාගන්න",()=>points>=50],
  ["100 Points","ලකුණු 100ක් ලබාගන්න",()=>points>=100],
  ["200 Points","ලකුණු 200ක් ලබාගන්න",()=>points>=200],
@@ -345,436 +345,414 @@ const awards = [
 ];
 
 function updateAwards(){
-
  awards.forEach(a=>{
-  if(a[2]()) unlock(a[0]);
+  if(a[2]())unlock(a[0]);
  });
 
- let list = document.getElementById("awardList");
- if(!list) return;
+ const list=document.getElementById("awardList");
+ if(!list)return;
 
- list.innerHTML = "";
+ list.innerHTML="";
 
  awards.forEach(a=>{
-
-  let done = achievements.includes(a[0]);
-
-  let div = document.createElement("div");
-  div.className = "achievement";
-  div.textContent = (done?"🏆 ":"🔒 ")+a[0]+" - "+a[1];
-
+  const done=achievements.includes(a[0]);
+  const div=document.createElement("div");
+  div.className="achievement";
+  div.textContent=(done?"🏆 ":"🔒 ")+a[0]+" - "+a[1];
   list.appendChild(div);
-
  });
-
 }
 
-// ==================================
 // DAILY BONUS
-// ==================================
 
 function checkBonus(){
+ const claimed=bonusDate===today();
+ const btn=document.getElementById("bonusBtn");
 
- const claimed = bonusDate === today();
+ btn.disabled=claimed||!cloudReady;
+ btn.textContent=claimed?"✅ Bonus Claimed":"🎁 Claim Bonus";
 
- const btn = document.getElementById("bonusBtn");
-
- btn.disabled = claimed || !cloudReady;
-
- btn.textContent = claimed
-  ? "✅ Bonus Claimed"
-  : "🎁 Claim Bonus";
-
- document.getElementById("bonusMsg").textContent =
-  claimed
-  ? "අද Bonus එක ලබාගෙන ඇත. හෙට නැවත එන්න!"
-  : "අද Bonus එක තවම ලබාගෙන නැහැ!";
-
+ document.getElementById("bonusMsg").textContent=
+  claimed?"අද Bonus එක ලබාගෙන ඇත. හෙට නැවත එන්න!":
+  "අද Bonus එක තවම ලබාගෙන නැහැ!";
 }
 
 async function claimBonus(){
+ if(!cloudReady||!playerRef||bonusDate===today())return;
 
- if(!cloudReady || !playerRef) return;
- if(bonusDate === today()) return;
+ try{
+  const result=await playerRef.transaction(data=>{
+   if(!data)data={};
+   if(data.bonusDate===today())return;
 
- const result = await playerRef.transaction(data=>{
+   data.points=(Number(data.points)||0)+20;
+   data.coins=(Number(data.coins)||0)+4;
+   data.highScore=Math.max(
+    Number(data.highScore)||0,data.points
+   );
+   data.bonusDate=today();
 
-  if(!data) data = {};
+   return data;
+  });
 
-  if(data.bonusDate === today()) return;
+  if(!result.committed)return;
 
-  data.points = (Number(data.points)||0)+20;
-  data.coins = (Number(data.coins)||0)+4;
-  data.highScore = Math.max(
-   Number(data.highScore)||0,
-   data.points
-  );
-  data.bonusDate = today();
+  const data=result.snapshot.val();
 
-  return data;
+  points=Number(data.points)||0;
+  coins=Number(data.coins)||0;
+  highScore=Number(data.highScore)||0;
+  bonusDate=data.bonusDate;
 
- });
+  updatePoints();
+  checkBonus();
+  saveCloud();
 
- if(!result.committed) return;
-
- const data = result.snapshot.val();
-
- points = Number(data.points)||0;
- coins = Number(data.coins)||0;
- highScore = Number(data.highScore)||0;
- bonusDate = data.bonusDate;
-
- updatePoints();
- checkBonus();
- saveCloud();
-
+ }catch(error){
+  document.getElementById("bonusMsg").textContent=
+   "Bonus Error: "+error.message;
+ }
 }
 
-// ==================================
 // NAVIGATION
-// ==================================
 
 function show(id){
-
- document.querySelectorAll("main section")
-  .forEach(s=>s.classList.add("hidden"));
+ document.querySelectorAll("main section").forEach(s=>
+  s.classList.add("hidden")
+ );
 
  document.getElementById(id).classList.remove("hidden");
 
- if(id==="achievements") updateAwards();
-
+ if(id==="achievements")updateAwards();
+ if(id==="leaderboard")loadPlayerName();
 }
 
-// ==================================
+// PLAYER NAME
+
+function loadPlayerName(){
+ const input=document.getElementById("playerNameInput");
+ if(input)input.value=playerName;
+}
+
+function savePlayerName(){
+ if(!cloudReady||!playerRef){
+  document.getElementById("nameMsg").textContent=
+   "Firebase සම්බන්ධ වනතුරු ඉන්න.";
+  return;
+ }
+
+ const input=document.getElementById("playerNameInput");
+ const name=input.value.trim();
+
+ if(name.length<3){
+  document.getElementById("nameMsg").textContent=
+   "Nickname එක අකුරු 3ක්වත් තිබිය යුතුයි!";
+  return;
+ }
+
+ playerName=name;
+ saveCloud();
+
+ document.getElementById("nameMsg").textContent=
+  "✅ Nickname එක Save කළා!";
+}
+
+// LEADERBOARD
+
+function startLeaderboard(){
+ if(!cloudReady)return;
+
+ db.ref("players")
+ .orderByChild("points")
+ .limitToLast(20)
+ .on("value",snapshot=>{
+
+  const list=document.getElementById("leaderboardList");
+  list.innerHTML="";
+
+  const players=[];
+
+  snapshot.forEach(child=>{
+   const data=child.val()||{};
+
+   players.push({
+    name:data.playerName||"Player",
+    points:Number(data.points)||0
+   });
+  });
+
+  players.sort((a,b)=>b.points-a.points);
+
+  if(players.length===0){
+   list.textContent="තවම Players නැහැ!";
+   return;
+  }
+
+  players.forEach((p,index)=>{
+   const item=document.createElement("div");
+   item.className="achievement";
+
+   const medal=["🥇","🥈","🥉"][index]||"🏅";
+
+   item.textContent=
+    medal+" "+p.name+" — ⭐ "+p.points+" Points";
+
+   list.appendChild(item);
+  });
+
+ },error=>{
+  document.getElementById("leaderboardList").textContent=
+   "Leaderboard Error: "+error.message;
+ });
+}
+
 // QUIZ GAME
-// ==================================
 
-const questions = [
-
+const questions=[
  ["ශ්‍රී ලංකාවේ අගනුවර කුමක්ද?",["කොළඹ","ශ්‍රී ජයවර්ධනපුර","මහනුවර"],1],
  ["සතියකට දින කීයක් තිබේද?",["5","6","7"],2],
  ["2 + 5 = ?",["6","7","8"],1],
  ["හිරු උදාවන්නේ කුමන දිශාවෙන්ද?",["නැගෙනහිර","බටහිර","උතුර"],0],
  ["ශ්‍රී ලංකාවේ ජාතික සත්වයා කුමක්ද?",["සිංහයා","දඬුලේනා","අලියා"],1]
-
 ];
 
-let qi = 0;
-let quizDone = false;
+let qi=0;
+let quizDone=false;
 
 function newQuiz(){
+ qi=Math.floor(Math.random()*questions.length);
+ quizDone=false;
 
- qi = Math.floor(Math.random()*questions.length);
- quizDone = false;
+ const q=questions[qi];
 
- let q = questions[qi];
-
- document.getElementById("question").textContent = q[0];
- document.getElementById("quizmsg").textContent = "";
- document.getElementById("answers").innerHTML = "";
+ document.getElementById("question").textContent=q[0];
+ document.getElementById("quizmsg").textContent="";
+ document.getElementById("answers").innerHTML="";
 
  q[1].forEach((a,i)=>{
-
-  let b = document.createElement("button");
-  b.className = "gamebtn";
-  b.textContent = a;
-  b.onclick = ()=>quizAnswer(i);
-
+  const b=document.createElement("button");
+  b.className="gamebtn";
+  b.textContent=a;
+  b.onclick=()=>quizAnswer(i);
   document.getElementById("answers").appendChild(b);
-
  });
-
 }
 
 function quizAnswer(i){
+ if(quizDone||!cloudReady)return;
 
- if(quizDone || !cloudReady) return;
+ quizDone=true;
+ const correct=i===questions[qi][2];
 
- quizDone = true;
-
- let correct = i === questions[qi][2];
-
- document.getElementById("quizmsg").textContent =
-  correct ? "🎉 නිවැරදියි! +10 Points" : "❌ වැරදියි!";
+ document.getElementById("quizmsg").textContent=
+  correct?"🎉 නිවැරදියි! +10 Points":"❌ වැරදියි!";
 
  if(correct){
   earn(10);
   unlock("Quiz Master");
  }
-
 }
 
-// ==================================
 // NUMBER PUZZLE
-// ==================================
 
-let puzzle = [];
-let moves = 0;
-let puzzleDone = false;
+let puzzle=[];
+let moves=0;
+let puzzleDone=false;
 
 function newPuzzle(){
-
- puzzle = [...Array(15)].map((_,i)=>i+1).concat(0);
+ puzzle=[...Array(15)].map((_,i)=>i+1).concat(0);
 
  for(let i=0;i<120;i++){
+  const z=puzzle.indexOf(0);
+  let choices=[z-4,z+4];
 
-  let z = puzzle.indexOf(0);
+  if(z%4)choices.push(z-1);
+  if(z%4!==3)choices.push(z+1);
 
-  let choices = [z-4,z+4];
-
-  if(z%4) choices.push(z-1);
-  if(z%4!==3) choices.push(z+1);
-
-  let valid = choices.filter(x=>
-   x>=0 && x<16 &&
+  const valid=choices.filter(x=>
+   x>=0&&x<16&&
    Math.abs((x%4)-(z%4))+
    Math.abs(Math.floor(x/4)-Math.floor(z/4))===1
   );
 
-  let t = valid[Math.floor(Math.random()*valid.length)];
-
-  [puzzle[z],puzzle[t]] = [puzzle[t],puzzle[z]];
-
+  const t=valid[Math.floor(Math.random()*valid.length)];
+  [puzzle[z],puzzle[t]]=[puzzle[t],puzzle[z]];
  }
 
- moves = 0;
- puzzleDone = false;
-
- document.getElementById("puzzmsg").textContent = "Moves: 0";
-
+ moves=0;
+ puzzleDone=false;
+ document.getElementById("puzzmsg").textContent="Moves: 0";
  drawPuzzle();
-
 }
 
 function drawPuzzle(){
-
- let area = document.getElementById("tiles");
- area.innerHTML = "";
+ const area=document.getElementById("tiles");
+ area.innerHTML="";
 
  puzzle.forEach((n,i)=>{
-
-  let b = document.createElement("button");
-
-  b.className = "tile";
-  b.textContent = n || "";
-  b.style.visibility = n ? "visible" : "hidden";
-
-  b.onclick = ()=>moveTile(i);
-
+  const b=document.createElement("button");
+  b.className="tile";
+  b.textContent=n||"";
+  b.style.visibility=n?"visible":"hidden";
+  b.onclick=()=>moveTile(i);
   area.appendChild(b);
-
  });
-
 }
 
 function moveTile(i){
+ if(puzzleDone||!cloudReady)return;
 
- if(puzzleDone || !cloudReady) return;
-
- let z = puzzle.indexOf(0);
+ const z=puzzle.indexOf(0);
 
  if(
   Math.abs((i%4)-(z%4))+
   Math.abs(Math.floor(i/4)-Math.floor(z/4))!==1
- ) return;
+ )return;
 
- [puzzle[i],puzzle[z]] = [puzzle[z],puzzle[i]];
-
+ [puzzle[i],puzzle[z]]=[puzzle[z],puzzle[i]];
  moves++;
-
  drawPuzzle();
 
  if(puzzle.every((n,i)=>n===(i+1)%16)){
-
-  puzzleDone = true;
-
-  document.getElementById("puzzmsg").textContent =
+  puzzleDone=true;
+  document.getElementById("puzzmsg").textContent=
    "🏆 Puzzle Complete! +20 Points";
 
   earn(20);
   unlock("Puzzle Winner");
-
-  document.querySelectorAll("#tiles button")
-   .forEach(b=>b.disabled=true);
-
+  document.querySelectorAll("#tiles button").forEach(b=>
+   b.disabled=true
+  );
  }else{
-
-  document.getElementById("puzzmsg").textContent =
-   "Moves: "+moves;
-
+  document.getElementById("puzzmsg").textContent="Moves: "+moves;
  }
-
 }
 
-// ==================================
 // NUMBER GUESS
-// ==================================
 
-let secret = 0;
-let guessDone = false;
+let secret=0;
+let guessDone=false;
 
 function newGuess(){
+ secret=Math.floor(Math.random()*20)+1;
+ guessDone=false;
 
- secret = Math.floor(Math.random()*20)+1;
- guessDone = false;
-
- document.getElementById("guessinput").value = "";
- document.getElementById("guessmsg").textContent = "අංකයක් තෝරන්න!";
-
+ document.getElementById("guessinput").value="";
+ document.getElementById("guessmsg").textContent="අංකයක් තෝරන්න!";
 }
 
 function checkGuess(){
+ if(guessDone||!cloudReady)return;
 
- if(guessDone || !cloudReady) return;
-
- let n = Number(document.getElementById("guessinput").value);
+ const n=Number(document.getElementById("guessinput").value);
 
  if(!Number.isInteger(n)||n<1||n>20){
-
-  document.getElementById("guessmsg").textContent =
+  document.getElementById("guessmsg").textContent=
    "1 සිට 20 දක්වා අංකයක් ඇතුළත් කරන්න.";
-
   return;
-
  }
 
  if(n===secret){
-
-  guessDone = true;
-
-  document.getElementById("guessmsg").textContent =
+  guessDone=true;
+  document.getElementById("guessmsg").textContent=
    "🎉 හරි! +15 Points";
-
   earn(15);
   unlock("Guess Winner");
-
  }else if(n<secret){
-
-  document.getElementById("guessmsg").textContent =
+  document.getElementById("guessmsg").textContent=
    "තව ටිකක් වැඩි අංකයක් උත්සාහ කරන්න.";
-
  }else{
-
-  document.getElementById("guessmsg").textContent =
+  document.getElementById("guessmsg").textContent=
    "තව ටිකක් අඩු අංකයක් උත්සාහ කරන්න.";
-
  }
-
 }
 
-// ==================================
 // MEMORY GAME
-// ==================================
 
-let symbols = ["🐱","🐶","🐸","🦊","🐼","🐵","🦁","🐰"];
+const symbols=["🐱","🐶","🐸","🦊","🐼","🐵","🦁","🐰"];
 
-let cards = [];
-let first = null;
-let locked = false;
-let matched = 0;
+let cards=[];
+let first=null;
+let locked=false;
+let matched=0;
 
 function newMemory(){
-
- cards = [...symbols,...symbols]
+ cards=[...symbols,...symbols]
   .sort(()=>Math.random()-.5)
   .map(symbol=>({symbol,open:false,done:false}));
 
- first = null;
- locked = false;
- matched = 0;
+ first=null;
+ locked=false;
+ matched=0;
 
- document.getElementById("memorymsg").textContent =
+ document.getElementById("memorymsg").textContent=
   "සමාන කාඩ්පත් සොයන්න!";
 
  drawMemory();
-
 }
 
 function drawMemory(){
-
- let area = document.getElementById("memoryBoard");
- area.innerHTML = "";
+ const area=document.getElementById("memoryBoard");
+ area.innerHTML="";
 
  cards.forEach((c,i)=>{
+  const b=document.createElement("button");
+  b.className="card";
+  b.textContent=c.open||c.done?c.symbol:"❓";
 
-  let b = document.createElement("button");
-
-  b.className = "card";
-  b.textContent = c.open||c.done ? c.symbol : "❓";
-
-  b.onclick = ()=>flip(i);
-
-  b.disabled = c.done || locked || c.open || !cloudReady;
+  b.onclick=()=>flip(i);
+  b.disabled=c.done||locked||c.open||!cloudReady;
 
   area.appendChild(b);
-
  });
-
 }
 
 function flip(i){
+ if(!cloudReady||locked||cards[i].done||cards[i].open)return;
 
- if(!cloudReady || locked || cards[i].done || cards[i].open) return;
-
- cards[i].open = true;
+ cards[i].open=true;
  drawMemory();
 
  if(first===null){
-
-  first = i;
+  first=i;
   return;
-
  }
 
  if(cards[first].symbol===cards[i].symbol){
+  cards[first].done=true;
+  cards[i].done=true;
 
-  cards[first].done = true;
-  cards[i].done = true;
-
-  matched += 2;
-  first = null;
+  matched+=2;
+  first=null;
 
   earn(5);
 
-  document.getElementById("memorymsg").textContent =
+  document.getElementById("memorymsg").textContent=
    "👏 Match! +5 Points";
 
   if(matched===16){
-
-   document.getElementById("memorymsg").textContent =
+   document.getElementById("memorymsg").textContent=
     "🏆 සියල්ල සොයාගත්තා!";
-
    unlock("Memory Master");
-
   }
 
   drawMemory();
 
  }else{
-
-  locked = true;
-
-  let a = first;
-  first = null;
+  locked=true;
+  const a=first;
+  first=null;
 
   setTimeout(()=>{
-
-   cards[a].open = false;
-   cards[i].open = false;
-
-   locked = false;
-
+   cards[a].open=false;
+   cards[i].open=false;
+   locked=false;
    drawMemory();
-
   },900);
-
  }
-
 }
 
-// ==================================
 // START GAME
-// ==================================
 
 newQuiz();
 newPuzzle();
@@ -783,10 +761,8 @@ newMemory();
 
 updatePoints();
 checkBonus();
-
 initCloud();
 
 </script>
-
 </body>
 </html>
