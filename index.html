@@ -85,6 +85,16 @@ footer{padding:20px;color:#94a3b8}
 <div class="stat">💎 Coins<br><b id="coins">0</b></div>
 <div class="stat">🏆 High Score<br><b id="highScore">0</b></div>
 <div class="stat">🔥 Streak<br><b id="streak">0</b> Days</div>
+
+<!-- PLAYER COUNTERS -->
+<div class="stat">
+👥 Total Players<br>
+<b id="totalPlayers">0</b>
+</div>
+<div class="stat">
+🟢 Online Players<br>
+<b id="onlinePlayers">0</b>
+</div>
 </div>
 
 <section class="panel">
@@ -265,6 +275,45 @@ function saveCloud(){
  });
 }
 
+// PLAYER COUNTERS AND ONLINE STATUS
+
+function startPlayerCounters(){
+
+ // TOTAL PLAYERS
+ db.ref("players").on("value",snapshot=>{
+  document.getElementById("totalPlayers").textContent=
+   snapshot.numChildren();
+ },error=>{
+  console.error("Player count error:",error);
+ });
+
+ // ONLINE PLAYERS
+ db.ref("presence").on("value",snapshot=>{
+  document.getElementById("onlinePlayers").textContent=
+   snapshot.numChildren();
+ },error=>{
+  console.error("Online count error:",error);
+ });
+
+ // CURRENT PLAYER PRESENCE
+ const uid=auth.currentUser.uid;
+ const myPresence=db.ref("presence/"+uid);
+
+ db.ref(".info/connected").on("value",snapshot=>{
+
+  if(snapshot.val()===true){
+
+   myPresence.onDisconnect().remove().then(()=>{
+    myPresence.set(true);
+   }).catch(error=>{
+    console.error("Presence error:",error);
+   });
+
+  }
+
+ });
+}
+
 // FIREBASE LOGIN
 
 async function initCloud(){
@@ -307,6 +356,7 @@ async function initCloud(){
 
   loadPlayerName();
   startLeaderboard();
+  startPlayerCounters();
   drawMemory();
 
  }catch(error){
